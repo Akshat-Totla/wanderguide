@@ -1,67 +1,72 @@
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../api/axiosInstance';
+import axios from "axios";
 
-export const signup = createAsyncThunk('auth/signup', async (data, { rejectWithValue }) => {
-  try {
-    const res = await api.post('/auth/signup', data);
-    return res.data.user;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || 'Signup failed');
+const api = axios.create({
+  baseURL: "https://wanderguide-backend.onrender.com/api",
+  withCredentials: true, // ⭐ VERY IMPORTANT (sends cookies)
+});
+
+// Flag to prevent multiple refresh calls
+let isRefreshing = false;
+let failedQueue = [];
+
+// Process queued requests after token refresh
+const processQueue = (error) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve();
+    }
+  });
+  failedQueue = [];
+};
+
+// RESPONSE INTERCEPTOR
+api.interceptors.response.use(
+  (response) => response,
+
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If 401 and not already retrying
+    if (error.response?.status === 401 && !originalRequest._retry) {
+
+      // If already refreshing → queue requests
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: () => resolve(api(originalRequest)),
+            reject: (err) => reject(err),
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Call refresh API
+        await api.post("/auth/refresh");
+
+        processQueue(null);
+        isRefreshing = false;
+
+        // Retry original request
+        return api(originalRequest);
+
+      } catch (refreshError) {
+        processQueue(refreshError);
+        isRefreshing = false;
+
+        // Optional: redirect to login
+        window.location.href = "/login";
+
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
   }
-});
+);
 
-export const login = createAsyncThunk('auth/login', async (data, { rejectWithValue }) => {
-  try {
-    const res = await api.post('/auth/login', data);
-    return res.data.user;
-  } catch (err) {
-    return rejectWithValue(err.response?.data?.message || 'Login failed');
-  }
-});
-
-export const logout = createAsyncThunk('auth/logout', async () => {
-  await api.post('/auth/logout');
-});
-
-export const fetchMe = createAsyncThunk('auth/fetchMe', async (_, { rejectWithValue }) => {
-  try {
-    const res = await api.get('/auth/me');
-    return res.data.user;
-  } catch {
-    return rejectWithValue(null);
-  }
-});
-
-const authSlice = createSlice({
-  name: 'auth',
-  initialState: {
-    user: null,
-    loading: false,
-    error: null,
-    initialized: false,
-  },
-  reducers: {
-    clearError: (state) => { state.error = null; },
-  },
-  extraReducers: (builder) => {
-    const pending = (state) => { state.loading = true; state.error = null; };
-    const rejected = (state, action) => { state.loading = false; state.error = action.payload; };
-
-    builder
-      .addCase(signup.pending, pending)
-      .addCase(signup.fulfilled, (state, action) => { state.loading = false; state.user = action.payload; })
-      .addCase(signup.rejected, rejected)
-
-      .addCase(login.pending, pending)
-      .addCase(login.fulfilled, (state, action) => { state.loading = false; state.user = action.payload; })
-      .addCase(login.rejected, rejected)
-
-      .addCase(logout.fulfilled, (state) => { state.user = null; })
-
-      .addCase(fetchMe.fulfilled, (state, action) => { state.user = action.payload; state.initialized = true; })
-      .addCase(fetchMe.rejected, (state) => { state.initialized = true; });
-  },
-});
-
-export const { clearError } = authSlice.actions;
-export default authSlice.reducer;
+export default api;
