@@ -37,6 +37,10 @@ app.use('/api/wishlist', wishlistRoutes);
 //   });
 // });
 
+app.get('/', (req, res) => {
+  res.json({ message: 'WanderGuide API is running' });
+});
+
 app.use('/api/tours', tourRoutes);
 
 const PORT = process.env.PORT || 5000;
