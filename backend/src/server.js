@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import connectDB from './config/db.js';
+
 import authRoutes from './routers/auth.js';
 import tourRoutes from './routers/tours.js';
 import bookingRoutes from './routers/bookings.js';
@@ -15,21 +16,36 @@ connectDB();
 
 const app = express();
 
+// ✅ CORS FIX (IMPORTANT)
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true,    // required for cookies cross-origin
+  origin: process.env.CLIENT_URL, // MUST be exact frontend URL (no fallback in production)
+  credentials: true,
 }));
+
+// ✅ Middleware
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
-app.use('/api/auth', authRoutes);
+// ✅ Debug middleware (temporary - REMOVE later)
+app.use((req, res, next) => {
+  console.log("Incoming Cookies:", req.cookies);
+  next();
+});
 
+// ✅ Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/wishlist', wishlistRoutes);
-// Global error handler (expand later)
+app.use('/api/tours', tourRoutes);
+
+// ✅ Test route
+app.get('/', (req, res) => {
+  res.json({ message: 'WanderGuide API is running' });
+});
+
+// ❌ Optional global error handler (you can enable later)
 // app.use((err, req, res, next) => {
 //   res.status(err.statusCode || 500).json({
 //     status: 'error',
@@ -37,12 +53,6 @@ app.use('/api/wishlist', wishlistRoutes);
 //   });
 // });
 
-app.get('/', (req, res) => {
-  res.json({ message: 'WanderGuide API is running' });
-});
-
-app.use('/api/tours', tourRoutes);
-
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
