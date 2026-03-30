@@ -16,26 +16,29 @@ export const verifyAccessToken = (token) =>
 export const verifyRefreshToken = (token) =>
   jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 
+// ✅ FIXED FUNCTION
 export const sendTokens = (res, user, statusCode) => {
   const accessToken = signAccessToken(user._id);
   const refreshToken = signRefreshToken(user._id);
 
+  // ✅ ACCESS TOKEN COOKIE
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: true,           // ⭐ FORCE TRUE (Render uses HTTPS)
+    sameSite: 'None',       // ⭐ FIXED (IMPORTANT)
     maxAge: 15 * 60 * 1000,
   });
 
+  // ✅ REFRESH TOKEN COOKIE
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    secure: true,           // ⭐ FORCE TRUE
+    sameSite: 'None',       // ⭐ MOST IMPORTANT FIX
     maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: '/api/auth/refresh',
+    // ❌ removed path (safer)
   });
 
-  // remove password from output
+  // remove sensitive fields
   const userObj = user.toObject();
   delete userObj.password;
   delete userObj.refreshToken;
