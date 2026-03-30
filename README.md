@@ -5,9 +5,6 @@ A full-stack Tour & Travel booking web application built with the MERN stack (Mo
 ## Live Demo
 > Coming soon — deployment in progress
 
-## Screenshots
-> Add screenshots of your app here
-
 ---
 
 ## Features
