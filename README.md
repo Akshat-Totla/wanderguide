@@ -3,7 +3,7 @@
 A full-stack Tour & Travel booking web application built with the MERN stack (MongoDB, Express, React, Node.js).
 
 ## Live Demo
-> Coming soon — deployment in progress
+> https://wanderguide-teal.vercel.app/
 
 ---
 
